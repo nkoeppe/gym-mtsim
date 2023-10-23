@@ -251,7 +251,7 @@ class MtEnv(gym.Env):
 
             orders = self.simulator.symbol_orders(symbol)
             for order in orders:
-                if self.check_is_not_none(order.sl_tp_type) and self.check_sl_tp_condition(order, log=True):
+                if self.check_is_not_none(order.sl_tp_type) and self.check_sl_tp_condition(order, log=False):
                     closed_orders_info[symbol].append(dict(
                         order_id=order.id, symbol=order.symbol, order_type=order.type,
                         volume=order.volume, fee=order.fee,
