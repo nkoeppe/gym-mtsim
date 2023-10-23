@@ -70,7 +70,7 @@ class MtEnv(gym.Env):
         assert len(time_points) > window_size, "not enough time points provided"
 
         # attributes
-        self.seed()
+        # self.seed()
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
         self.observation_mode = observation_mode
