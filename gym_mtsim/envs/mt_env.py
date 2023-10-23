@@ -9,13 +9,14 @@ from scipy.special import expit
 import pandas as pd
 
 import matplotlib.pyplot as plt
-import matplotlib.cm as plt_cm
+import matplotlib.cm as plt_cm 
 import matplotlib.colors as plt_colors
 import plotly.graph_objects as go
 
 import gymnasium as gym
 from gymnasium import spaces
 from gymnasium.utils import seeding
+import plotly.io as pio
 
 from ..simulator import MtSimulator, OrderType
 
@@ -23,10 +24,13 @@ from ..simulator import MtSimulator, OrderType
 class MtEnv(gym.Env):
 
     metadata = {'render_modes': ['human', 'simple_figure', 'advanced_figure']}
+    indicators_values = None
 
     def __init__(
             self, original_simulator: MtSimulator, trading_symbols: List[str],
-            window_size: int, time_points: Optional[List[datetime]]=None,
+            window_size: int, 
+            # indicators, indicators_values, 
+            time_points: Optional[List[datetime]]=None,
             hold_threshold: float=0.5, close_threshold: float=0.5,
             fee: Union[float, Callable[[str], float]]=0.0005,
             fee_type:str = "fixed",
@@ -36,6 +40,7 @@ class MtEnv(gym.Env):
             symbol_max_orders: int=1, multiprocessing_processes: Optional[int]=None,
             render_mode:str =None,
             observation_mode: int=0,
+            # all_time_points=None,
             normalize_observation: bool=True,
             orders_observation_detail_count: int=2,
         ) -> None:
@@ -55,12 +60,17 @@ class MtEnv(gym.Env):
             assert original_simulator._get_unit_symbol_info(currency_profit) is not None, \
                    f"unit symbol for '{currency_profit}' not found"
 
+        # self.all_time_points = original_simulator.symbols_data[trading_symbols[0]].index.to_pydatetime().tolist() if all_time_points is None else all_time_points
+
+        # self.indicators = indicators
+        # self.indicators_values = indicators_values
+        
         if time_points is None:
             time_points = original_simulator.symbols_data[trading_symbols[0]].index.to_pydatetime().tolist()
         assert len(time_points) > window_size, "not enough time points provided"
 
         # attributes
-        # self.seed()
+        self.seed()
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
         self.observation_mode = observation_mode
@@ -80,20 +90,14 @@ class MtEnv(gym.Env):
         self.symbol_max_orders = symbol_max_orders
         self.multiprocessing_pool = Pool(multiprocessing_processes) if multiprocessing_processes else None
 
+        
         self.prices = self._get_prices()
         self.signal_features = self._process_data()
         self.features_shape = (self.window_size, self.signal_features.shape[1])
         self.orders_observation_detail_count=orders_observation_detail_count
+        
         self.orders_shape = (len(self.trading_symbols), self.symbol_max_orders, self.orders_observation_detail_count)
         self.flattened_balance_equity_margin_orders_shape = (self.window_size, np.prod(self.orders_shape) + 3)
-
-        # episode
-        self._start_tick = self.window_size - 1
-        self._end_tick = len(self.time_points) - 1
-        self._done: bool = NotImplemented
-        self._current_tick: int = NotImplemented
-        self.simulator: MtSimulator = NotImplemented
-        self.history: List[Dict[str, Any]] = NotImplemented
 
         # spaces
         self.action_space = spaces.Box(
@@ -103,12 +107,23 @@ class MtEnv(gym.Env):
         self.observation_space = self._get_observation_space()
         self.orders_balance_equity_margin_array = np.zeros(self.flattened_balance_equity_margin_orders_shape)
 
+        # episode
+        # self._start_tick = self.get_start_tick()
+        self._start_tick = self.window_size - 1
 
+        self._end_tick = len(self.time_points) - 1
+        self._done: bool = NotImplemented
+        self._current_tick: int = NotImplemented
+        self.simulator: MtSimulator = NotImplemented
+        self.history: List[Dict[str, Any]] = NotImplemented
+    
+    def get_start_tick(self):
+        return (self.window_size - 1) + self.first_not_nan
+    
 
-
-    # def seed(self, seed: Optional[int]=None) -> List[int]:
-    #     self.np_random, seed = seeding.np_random(seed)
-    #     return [seed]
+    def seed(self, seed: Optional[int]=None) -> List[int]:
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
 
     def _init_orders_balance_equity_margin_array(self):
         for i in range(self.window_size):
@@ -235,14 +250,13 @@ class MtEnv(gym.Env):
 
             orders = self.simulator.symbol_orders(symbol)
             for order in orders:
-                if self.check_is_not_none(order.sl_tp_type):
-                    if self.check_sl_tp_condition(order, log=True):
-                        closed_orders_info[symbol].append(dict(
-                            order_id=order.id, symbol=order.symbol, order_type=order.type,
-                            volume=order.volume, fee=order.fee,
-                            margin=order.margin, profit=order.profit,
-                            fee_type=order.fee_type, sl=order.sl, tp=order.tp, sl_tp_type=order.sl_tp_type,
-                        ))
+                if self.check_is_not_none(order.sl_tp_type) and self.check_sl_tp_condition(order, log=True):
+                    closed_orders_info[symbol].append(dict(
+                        order_id=order.id, symbol=order.symbol, order_type=order.type,
+                        volume=order.volume, fee=order.fee,
+                        margin=order.margin, profit=order.profit,
+                        fee_type=order.fee_type, sl=order.sl, tp=order.tp, sl_tp_type=order.sl_tp_type,
+                    ))
 
             orders_capacity = self.symbol_max_orders - (len(self.simulator.symbol_orders(symbol)))
 
@@ -323,30 +337,26 @@ class MtEnv(gym.Env):
 
 
         if order.type == OrderType.Buy:
-            if self.check_is_not_none(sl_or_tp_low):
-                if current_ohlc["Low"] <= self.sl_tp_conditions_creator(order, "Low"):  # SL
-                    if log:
-                        print("Buy SL Hit")
-                    close_order = True
+            if self.check_is_not_none(sl_or_tp_low) and current_ohlc["Low"] <= self.sl_tp_conditions_creator(order, "Low"):
+                if log:
+                    print("Buy SL Hit")
+                close_order = True
 
-            if self.check_is_not_none(sl_or_tp_high):
-                if current_ohlc["High"] >= self.sl_tp_conditions_creator(order, "High"):  # TP
-                    if log:
-                        print("Buy TP Hit")
-                    close_order = True
+            if self.check_is_not_none(sl_or_tp_high) and current_ohlc["High"] >= self.sl_tp_conditions_creator(order, "High"):
+                if log:
+                    print("Buy TP Hit")
+                close_order = True
 
         if order.type == OrderType.Sell:
-            if self.check_is_not_none(sl_or_tp_high):
-                if current_ohlc["High"] >= self.sl_tp_conditions_creator(order, "High"):  # SL
-                    if log:
-                        print("Sell SL Hit")
-                    close_order = True
+            if self.check_is_not_none(sl_or_tp_high) and current_ohlc["High"] >= self.sl_tp_conditions_creator(order, "High"):
+                if log:
+                    print("Sell SL Hit")
+                close_order = True
 
-            if self.check_is_not_none(sl_or_tp_low):
-                if current_ohlc["Low"] <= self.sl_tp_conditions_creator(order, "Low"):  # TP
-                    if log:
-                        print("Sell TP Hit")
-                    close_order = True
+            if self.check_is_not_none(sl_or_tp_low) and current_ohlc["Low"] <= self.sl_tp_conditions_creator(order, "Low"):
+                if log:
+                    print("Sell TP Hit")
+                close_order = True
 
         if close_order:
             self.simulator.close_order(order)
@@ -388,15 +398,14 @@ class MtEnv(gym.Env):
         volume = order.volume
         profit = order.profit
 
-        if self.normalize_observation:
-            if order.entry_price != 0 and order.volume != 0:
-                current_close = self.simulator.price_at(order.symbol, self.simulator.current_time)["Close"]
-
-                profit = profit / (entry_price * volume)
-                if order.type == OrderType.Buy:
-                    entry_price = (current_close / entry_price) - 1
-                elif order.type == OrderType.Sell:
-                    entry_price = (entry_price / current_close) - 1
+        if self.normalize_observation and (order.entry_price != 0 and order.volume != 0):
+            current_close = self.simulator.price_at(order.symbol, self.simulator.current_time)["Close"]
+        
+            profit = profit / (entry_price * volume)
+            if order.type == OrderType.Buy:
+                entry_price = (current_close / entry_price) - 1
+            elif order.type == OrderType.Sell:
+                entry_price = (entry_price / current_close) - 1
 
         if self.orders_observation_detail_count == 3:
             return [entry_price, volume, profit]
@@ -568,7 +577,7 @@ class MtEnv(gym.Env):
 
     def _render_advanced_figure(
             self, figsize: Tuple[float, float]=(1400, 600), time_format: str="%Y-%m-%d %H:%m",
-            return_figure: bool=False
+            return_figure: bool=False, save_path: str=None
         ) -> Any:
 
         fig = go.Figure()
@@ -722,10 +731,12 @@ class MtEnv(gym.Env):
             height=figsize[1],
         )
 
-        if return_figure:
+        if save_path:
+            pio.write_image(fig, save_path, format='jpg')
+        elif return_figure:
             return fig
-
-        fig.show()
+        else:
+            fig.show()
 
 
     def close(self) -> None:

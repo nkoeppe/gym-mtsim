@@ -11,7 +11,9 @@ class SymbolInfo:
 
         self.currency_margin: str = info.currency_margin
         self.currency_profit: str = info.currency_profit
-        self.currencies: Tuple[str, ...] = tuple(set([self.currency_margin, self.currency_profit]))
+        self.currencies: Tuple[str, ...] = tuple(
+            {self.currency_margin, self.currency_profit}
+        )
 
         self.trade_contract_size: float = info.trade_contract_size
         self.margin_rate: float = 1.0  # MetaTrader info does not contain this value!
@@ -33,8 +35,6 @@ class SymbolInfo:
         }
 
         root = info.path.split('\\')[0]
-        for k, v in mapping.items():
-            if root.lower().startswith(k):
-                return v
-
-        return root
+        return next(
+            (v for k, v in mapping.items() if root.lower().startswith(k)), root
+        )

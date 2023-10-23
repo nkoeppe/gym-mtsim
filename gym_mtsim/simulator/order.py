@@ -12,9 +12,7 @@ class OrderType(IntEnum):
 
     @property
     def opposite(self) -> 'OrderType':
-        if self == OrderType.Sell:
-            return OrderType.Buy
-        return OrderType.Sell
+        return OrderType.Buy if self == OrderType.Sell else OrderType.Sell
 
 
 class Order:

@@ -37,9 +37,8 @@ class MtSimulator:
         self.closed_orders: List[Order] = []
         self.current_time: datetime = NotImplemented
 
-        if symbols_filename:
-            if not self.load_symbols(symbols_filename):
-                raise FileNotFoundError(f"file '{symbols_filename}' not found")
+        if symbols_filename and not self.load_symbols(symbols_filename):
+            raise FileNotFoundError(f"file '{symbols_filename}' not found")
 
 
     @property
@@ -50,9 +49,7 @@ class MtSimulator:
     @property
     def margin_level(self) -> float:
         margin = round(self.margin, 6)
-        if margin == 0.:
-            return float('inf')
-        return self.equity / margin
+        return float('inf') if margin == 0. else self.equity / margin
 
 
     def download_data(
@@ -119,10 +116,7 @@ class MtSimulator:
 
 
     def symbol_orders(self, symbol: str) -> List[Order]:
-        symbol_orders = list(filter(
-            lambda order: order.symbol == symbol, self.orders
-        ))
-        return symbol_orders
+        return list(filter(lambda order: order.symbol == symbol, self.orders))
 
 
     def create_order(self, order_type: OrderType, symbol: str, volume: float, fee: float=0.0005, fee_type: str="fixed", sl: float=None, tp:float=None, sl_tp_type: str=None,) -> Order:
@@ -226,9 +220,8 @@ class MtSimulator:
 
 
     def get_state(self) -> Dict[str, Any]:
-        orders = []
-        for order in reversed(self.closed_orders + self.orders):
-            orders.append({
+        orders = [
+            {
                 'Id': order.id,
                 'Symbol': order.symbol,
                 'Type': order.type.name,
@@ -246,7 +239,9 @@ class MtSimulator:
                 'SL': order.sl,
                 'TP': order.tp,
                 'SL/TP Type': order.sl_tp_type,
-            })
+            }
+            for order in reversed(self.closed_orders + self.orders)
+        ]
         orders_df = pd.DataFrame(orders)
 
         return {
@@ -310,10 +305,14 @@ class MtSimulator:
 
 
     def _get_unit_symbol_info(self, currency: str) -> Optional[SymbolInfo]:  # Unit/Currency or Currency/Unit
-        for info in self.symbols_info.values():
-            if currency in info.currencies and self.unit in info.currencies:
-                return info
-        return None
+        return next(
+            (
+                info
+                for info in self.symbols_info.values()
+                if currency in info.currencies and self.unit in info.currencies
+            ),
+            None,
+        )
 
 
     def _check_current_time(self) -> None:

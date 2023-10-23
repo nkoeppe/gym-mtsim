@@ -15,7 +15,7 @@ def retrieve_data(
     ) -> Tuple[SymbolInfo, pd.DataFrame]:
 
     if not mt.initialize():
-        raise ConnectionError(f"MetaTrader cannot be initialized")
+        raise ConnectionError("MetaTrader cannot be initialized")
 
     symbol_info = _get_symbol_info(symbol)
 
