@@ -184,9 +184,7 @@ class MtEnv(gym.Env):
 
 
     def step(self, action: np.ndarray) -> Tuple[Dict[str, np.ndarray], float, bool, Dict[str, Any]]:
-        print("Inside step, pre applying")
         orders_info, closed_orders_info = self._apply_action(action)
-        print("Inside step, after applying action")
 
         self._current_tick += 1
         if self._current_tick == self._end_tick:
