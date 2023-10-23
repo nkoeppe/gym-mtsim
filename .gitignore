@@ -7,3 +7,6 @@ venv*/
 dist/
 *.egg-info/
 build/
+
+
+custom_mt_env.py
