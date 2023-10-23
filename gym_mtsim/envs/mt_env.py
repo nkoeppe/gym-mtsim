@@ -1,3 +1,4 @@
+import random
 from typing import List, Tuple, Dict, Any, Optional, Union, Callable
 
 import copy
@@ -166,7 +167,6 @@ class MtEnv(gym.Env):
 
     def reset(self, seed=None) -> Dict[str, np.ndarray]:
         super().reset(seed=seed)
-        self.action_space.seed(seed)
         self._done = False
         self._current_tick = self._start_tick
         self.simulator = copy.deepcopy(self.original_simulator)
@@ -509,7 +509,7 @@ class MtEnv(gym.Env):
 
 
     def _render_simple_figure(
-        self, figsize: Tuple[float, float]=(14, 6), return_figure: bool=False
+        self, figsize: Tuple[float, float]=(14, 6), return_figure: bool=False, save_path: str=None
     ) -> Any:
         fig, ax = plt.subplots(figsize=figsize, facecolor='white')
 
@@ -570,10 +570,12 @@ class MtEnv(gym.Env):
         )
         fig.legend(loc='right')
 
-        if return_figure:
+        if save_path:
+            fig.savefig(save_path)
+        elif return_figure:
             return fig
-
-        plt.show()
+        else:
+            fig.show()
 
 
     def _render_advanced_figure(
@@ -733,7 +735,7 @@ class MtEnv(gym.Env):
         )
 
         if save_path:
-            pio.write_image(fig, save_path, format='jpg')
+            pass
         elif return_figure:
             return fig
         else:
