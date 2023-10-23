@@ -166,6 +166,7 @@ class MtEnv(gym.Env):
 
     def reset(self, seed=None) -> Dict[str, np.ndarray]:
         super().reset(seed=seed)
+        self.action_space.seed(seed)
         self._done = False
         self._current_tick = self._start_tick
         self.simulator = copy.deepcopy(self.original_simulator)
