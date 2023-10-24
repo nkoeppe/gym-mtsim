@@ -8,21 +8,29 @@ class OrderType(IntEnum):
 
     @property
     def sign(self) -> float:
-        return 1. if self == OrderType.Buy else -1.
+        return 1.0 if self == OrderType.Buy else -1.0
 
     @property
-    def opposite(self) -> 'OrderType':
+    def opposite(self) -> "OrderType":
         return OrderType.Buy if self == OrderType.Sell else OrderType.Sell
 
 
 class Order:
-
     def __init__(
         self,
-        id: int, type: OrderType, symbol: str, volume: float, fee: float,
-        entry_time: datetime, entry_price: float,
-        exit_time: datetime, exit_price: float,
-        fee_type: str="fixed", sl: float=None, tp:float=None, sl_tp_type: str=None,
+        id: int,
+        type: OrderType,
+        symbol: str,
+        volume: float,
+        fee: float,
+        entry_time: datetime,
+        entry_price: float,
+        exit_time: datetime,
+        exit_price: float,
+        fee_type: str = "fixed",
+        sl: float = None,
+        tp: float = None,
+        sl_tp_type: str = None,
     ) -> None:
         # sl_tp_type: "percent", "pip"
 
@@ -36,10 +44,10 @@ class Order:
         self.entry_price = entry_price
         self.exit_time = exit_time
         self.exit_price = exit_price
-        self.profit = 0.
-        self.gross_profit= 0.
+        self.profit = 0.0
+        self.gross_profit = 0.0
         self.sl = sl
         self.tp = tp
         self.sl_tp_type = sl_tp_type
-        self.margin = 0.
+        self.margin = 0.0
         self.closed = False

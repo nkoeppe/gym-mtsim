@@ -11,9 +11,8 @@ from .symbol import SymbolInfo
 
 
 def retrieve_data(
-        symbol: str, from_dt: datetime, to_dt: datetime, timeframe: mt.Timeframe
-    ) -> Tuple[SymbolInfo, pd.DataFrame]:
-
+    symbol: str, from_dt: datetime, to_dt: datetime, timeframe: mt.Timeframe
+) -> Tuple[SymbolInfo, pd.DataFrame]:
     if not mt.initialize():
         raise ConnectionError("MetaTrader cannot be initialized")
 
@@ -36,12 +35,14 @@ def retrieve_data(
 
     rates_frame = pd.DataFrame(
         all_rates,
-        columns=['Time', 'Open', 'High', 'Low', 'Close', 'Volume', '_', '_'],
+        columns=["Time", "Open", "High", "Low", "Close", "Volume", "_", "_"],
     )
-    rates_frame['Time'] = pd.to_datetime(rates_frame['Time'], unit='s', utc=True)
+    rates_frame["Time"] = pd.to_datetime(rates_frame["Time"], unit="s", utc=True)
 
-    data = rates_frame[['Time', 'Open', 'Close', 'Low', 'High', 'Volume']].set_index('Time')
-    data = data.loc[~data.index.duplicated(keep='first')]
+    data = rates_frame[["Time", "Open", "Close", "Low", "High", "Volume"]].set_index(
+        "Time"
+    )
+    data = data.loc[~data.index.duplicated(keep="first")]
 
     mt.shutdown()
 
@@ -55,7 +56,7 @@ def _get_symbol_info(symbol: str) -> SymbolInfo:
 
 
 def _local2utc(dt: datetime) -> datetime:
-    return dt.astimezone(pytz.timezone('Etc/UTC'))
+    return dt.astimezone(pytz.timezone("Etc/UTC"))
 
 
 def _add_months(sourcedate: datetime, months: int) -> datetime:
@@ -65,7 +66,11 @@ def _add_months(sourcedate: datetime, months: int) -> datetime:
     day = min(sourcedate.day, calendar.monthrange(year, month)[1])
 
     return datetime(
-        year, month, day,
-        sourcedate.hour, sourcedate.minute, sourcedate.second,
-        tzinfo=sourcedate.tzinfo
+        year,
+        month,
+        day,
+        sourcedate.hour,
+        sourcedate.minute,
+        sourcedate.second,
+        tzinfo=sourcedate.tzinfo,
     )

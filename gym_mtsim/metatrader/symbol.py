@@ -4,7 +4,6 @@ from .interface import MtSymbolInfo
 
 
 class SymbolInfo:
-
     def __init__(self, info: MtSymbolInfo) -> None:
         self.name: str = info.name
         self.market: str = self._get_market(info)
@@ -22,19 +21,15 @@ class SymbolInfo:
         self.volume_max: float = info.volume_max
         self.volume_step: float = info.volume_step
 
-
     def __str__(self) -> str:
-        return f'{self.market}/{self.name}'
-
+        return f"{self.market}/{self.name}"
 
     def _get_market(self, info: MtSymbolInfo) -> str:
         mapping = {
-            'forex': 'Forex',
-            'crypto': 'Crypto',
-            'stock': 'Stock',
+            "forex": "Forex",
+            "crypto": "Crypto",
+            "stock": "Stock",
         }
 
-        root = info.path.split('\\')[0]
-        return next(
-            (v for k, v in mapping.items() if root.lower().startswith(k)), root
-        )
+        root = info.path.split("\\")[0]
+        return next((v for k, v in mapping.items() if root.lower().startswith(k)), root)
